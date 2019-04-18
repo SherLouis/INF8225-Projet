@@ -33,7 +33,7 @@ agent = agentQ.AgentQ(env=env,epsilon=1.0,ep_start=1.0,ep_end=0.0,scaling_factor
 ###TRAINING###
 
 num_rounds = 100 # Payout calculated over num_rounds
-num_samples =100 # num_rounds simulated over num_samples
+num_samples =1000 # num_rounds simulated over num_samples
 
 
 average_payouts = []
@@ -59,6 +59,7 @@ for sample in range(num_samples):
 plt.plot(average_payouts)           
 plt.xlabel('Episode')
 plt.ylabel('Average payout after 100 rounds')
+plt.title('Rewards moyens selon les épisodes')
 plt.show()      
     
 print ("Average payout after {} rounds is {}".format(num_rounds, sum(average_payouts)/(num_samples)))
@@ -70,14 +71,17 @@ num_games=10000  #Validation tests
 num_blackjack=0
 num_win=0
 num_loss=0
+payouts = []
 
 observation=env.reset()
 game=1
+total_payout = 0
 
 #Play with the Q agent
 while game<=num_games:
     action = agent.play(observation)
     next_observation, payout, is_done, _ = env.step(action)
+    total_payout += payout
     if payout==-1:
         num_loss+=1
     elif payout==1:
@@ -87,7 +91,18 @@ while game<=num_games:
     observation = next_observation
     if is_done:
         observation = env.reset() # Environment deals new cards to player and dealer
+        payouts.append(payout)
         game += 1
+
+# Plot payouts per game
+plt.plot(payouts)   
+plt.title('Rewards per game-Agent Q')
+plt.xlabel('Game')
+plt.ylabel('Payout')
+plt.show()      
+    
+print ("Average payout after {} games is {}".format(num_games, total_payout/num_games))
+
 print("Résultats agent Q: ")
 print("Nombre de blackjack: "+str(num_blackjack))
 print("Nombre de parties gagnées: "+str(num_win))
