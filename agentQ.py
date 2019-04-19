@@ -5,7 +5,7 @@ import numpy as np
 
 
 class AgentQ():
-    def __init__(self,env,epsilon=1.0,ep_start=1.0,ep_end=0.0,scaling_factor=1.0,alpha=0.5,gamma=0.9,num_episodes_to_train=800,agressive_e_greedy=False, random=False):
+    def __init__(self,env,epsilon=1.0,ep_start=1.0,ep_end=0.0,scaling_factor=200,alpha=0.5,gamma=0.9,num_episodes_to_train=800,exp_e_greedy=False, random=False):
         self.env = env
 
         # n is number of valid actions from the souce code
@@ -14,9 +14,9 @@ class AgentQ():
         # Set parameters of the learning agent
         self.Q = dict()                     # Q-table which will be a dictionary of tuples
         self.epsilon = epsilon              # Random exploration factor
-        self.epsilon_start=ep_start         # Starting epsilon for agressive e-greedy policy
-        self.epsilon_end=ep_end             # Ending epsilon for agressive e-greedy policy
-        self.scaling_factor=scaling_factor  # Scaling factor for agressive e-greedy policy
+        self.epsilon_start=ep_start         # Starting epsilon for exp e-greedy policy
+        self.epsilon_end=ep_end             # Ending epsilon for exp e-greedy policy
+        self.scaling_factor=scaling_factor  # Scaling factor for exp e-greedy policy
         self.alpha = alpha                  # Learning factor
         self.gamma = gamma                  # Discount factor- closer to 1 learns well into distant future
 
@@ -26,13 +26,13 @@ class AgentQ():
         # epsilon finally becomes 0 in the final 30% of num_episodes_to_train
 
         self.num_episodes_to_train = num_episodes_to_train # Change epsilon each episode based on this
+        self.num_episodes_to_train_left = num_episodes_to_train
         self.small_decrement = (0.1 * epsilon) / (0.3 * num_episodes_to_train) # reduces epsilon slowly
         self.big_decrement = (0.8 * epsilon) / (0.4 * num_episodes_to_train) # reduces epilon faster
 
         #Determine which type of epsilon greedy policy is applied
 
-        self.agressive_e_greedy=agressive_e_greedy
-        self.num_episodes_to_train_left = num_episodes_to_train
+        self.exp_e_greedy=exp_e_greedy
         self.current_episode=1
 
         #Determine if epsilon always equals 1(random actions)
@@ -41,12 +41,12 @@ class AgentQ():
         
     def update_parameters(self):
         """
-        Update epsilon and alpha after each action
+        Update epsilon and alpha after each episode
         Set them to 0 if not learning
         Epsilon equals 1 if the agent plays randomly
         """
 
-        if(not self.random and not self.agressive_e_greedy):
+        if(not self.random and not self.exp_e_greedy):
             if self.num_episodes_to_train_left > 0.7 * self.num_episodes_to_train:
                 self.epsilon -= self.small_decrement
             elif self.num_episodes_to_train_left > 0.3 * self.num_episodes_to_train:
@@ -57,13 +57,10 @@ class AgentQ():
                 self.epsilon = 0.0
                 self.alpha = 0.0
 
-            self.num_episodes_to_train_left -= 1
-
-        elif(self.agressive_e_greedy):
+        elif(self.exp_e_greedy):
             if(self.current_episode<=self.num_episodes_to_train):
                 self.epsilon=self.epsilon_start+(self.epsilon_end-self.epsilon_start)*np.exp((self.current_episode-self.num_episodes_to_train)/self.scaling_factor)
             
-            self.current_episode+=1
 
     def create_Q_if_new_observation(self, observation):
         """
@@ -98,7 +95,6 @@ class AgentQ():
         else:
             action = random.choice(self.valid_actions)
 
-        self.update_parameters()
 
         return action
 
