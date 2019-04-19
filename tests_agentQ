@@ -28,12 +28,12 @@ env = gym.make('Blackjack-v0')
 env.natural=True
 
 
-agent = agentQ.AgentQ(env=env,epsilon=1.0,ep_start=1.0,ep_end=0.0,scaling_factor=5,alpha=0.5,gamma=0.9,num_episodes_to_train=90000,agressive_e_greedy=False, random=False)
+agent = agentQ.AgentQ(env=env,epsilon=1.0,ep_start=1.0,ep_end=0.0,scaling_factor=200,alpha=0.5,gamma=0.9,num_episodes_to_train=800,exp_e_greedy=False, random=False)
 
 ###TRAINING###
 
 num_rounds = 100 # Payout calculated over num_rounds
-num_samples =1000 # num_rounds simulated over num_samples
+num_samples =1000 # num_rounds simulated over num_samples (num epochs)
 
 
 average_payouts = []
@@ -55,6 +55,15 @@ for sample in range(num_samples):
             round += 1
     average_payouts.append(total_payout)
 
+    #For epsilon linear policy
+    agent.num_episodes_to_train_left-=1
+    #For epsilon exponential policy
+    agent.current_episode+=1
+
+    #Update epsilon after each episode
+    agent.update_parameters()
+  
+
 # Plot payout per 100 rounds for each value of 'sample'
 plt.plot(average_payouts)           
 plt.xlabel('Episode')
@@ -71,6 +80,7 @@ num_games=10000  #Validation tests
 num_blackjack=0
 num_win=0
 num_loss=0
+num_null=0
 payouts = []
 
 observation=env.reset()
@@ -82,14 +92,16 @@ while game<=num_games:
     action = agent.play(observation)
     next_observation, payout, is_done, _ = env.step(action)
     total_payout += payout
-    if payout==-1:
-        num_loss+=1
-    elif payout==1:
-        num_win+=1
-    elif payout==1.5:
-        num_blackjack+=1
     observation = next_observation
     if is_done:
+        if payout==-1:
+            num_loss+=1
+        elif payout==1:
+            num_win+=1
+        elif payout==1.5:
+            num_blackjack+=1
+        else:
+            num_null+=1
         observation = env.reset() # Environment deals new cards to player and dealer
         payouts.append(payout)
         game += 1
@@ -107,12 +119,14 @@ print("Résultats agent Q: ")
 print("Nombre de blackjack: "+str(num_blackjack))
 print("Nombre de parties gagnées: "+str(num_win))
 print("Nombre de parties perdues: "+str(num_loss))
+print("Nombre de parties annulées: "+str(num_null))
 
 #Play randomly
 
 num_blackjack=0
 num_win=0
 num_loss=0
+num_null=0
 
 observation=env.reset()
 game=1
@@ -121,14 +135,16 @@ game=1
 while game<=num_games:
     action = random.choice(agent.valid_actions)
     next_observation, payout, is_done, _ = env.step(action)
-    if payout==-1:
-        num_loss+=1
-    elif payout==1:
-        num_win+=1
-    elif payout==1.5:
-        num_blackjack+=1
     observation = next_observation
     if is_done:
+        if payout==-1:
+            num_loss+=1
+        elif payout==1:
+            num_win+=1
+        elif payout==1.5:
+            num_blackjack+=1
+        else:
+            num_null+=1
         observation = env.reset() # Environment deals new cards to player and dealer
         game += 1
 
@@ -137,3 +153,4 @@ print("Résultats jeu aléatoire: ")
 print("Nombre de blackjack: "+str(num_blackjack))
 print("Nombre de parties gagnées: "+str(num_win))
 print("Nombre de parties perdues: "+str(num_loss))
+print("Nombre de parties annulées: "+str(num_null))
