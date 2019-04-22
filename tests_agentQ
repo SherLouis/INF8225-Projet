@@ -1,0 +1,156 @@
+import gym
+import math
+import random
+import numpy as np
+import matplotlib
+import matplotlib.pyplot as plt
+from collections import namedtuple
+from itertools import count
+
+
+import torch
+import torch.nn as nn
+import torch.optim as optim
+import torch.nn.functional as F
+import torchvision.transforms as T
+from torch.autograd import Variable
+import agentQ as agentQ
+
+
+#Tiré de:
+#-https://adventuresinmachinelearning.com/pytorch-tutorial-deep-learning/
+#-https://pytorch.org/tutorials/intermediate/reinforcement_q_learning.html
+#-https://github.com/pradhyo/blackjack
+
+env = gym.make('Blackjack-v0')
+
+#Casino rule for blackjack
+env.natural=True
+
+
+agent = agentQ.AgentQ(env=env,epsilon=1.0,ep_start=1.0,ep_end=0.0,scaling_factor=200,alpha=0.5,gamma=0.9,num_episodes_to_train=800,exp_e_greedy=False, random=False)
+
+###TRAINING###
+
+num_rounds = 100 # Payout calculated over num_rounds
+num_samples =1000 # num_rounds simulated over num_samples (num epochs)
+
+
+average_payouts = []
+
+
+observation = env.reset()
+for sample in range(num_samples):
+    round = 1
+    total_payout = 0 # to store total payout over 'num_rounds'
+    # Take action based on Q-table of the agent and learn based on that until 'num_episodes_to_train' = 0
+    while round <= num_rounds:
+        action = agent.choose_action(observation)
+        next_observation, payout, is_done, _ = env.step(action)
+        agent.learn(observation, action, payout, next_observation)
+        total_payout += payout
+        observation = next_observation
+        if is_done:
+            observation = env.reset() # Environment deals new cards to player and dealer
+            round += 1
+    average_payouts.append(total_payout)
+
+    #For epsilon linear policy
+    agent.num_episodes_to_train_left-=1
+    #For epsilon exponential policy
+    agent.current_episode+=1
+
+    #Update epsilon after each episode
+    agent.update_parameters()
+  
+
+# Plot payout per 100 rounds for each value of 'sample'
+plt.plot(average_payouts)           
+plt.xlabel('Episode')
+plt.ylabel('Average payout after 100 rounds')
+plt.title('Rewards moyens selon les épisodes')
+plt.show()      
+    
+print ("Average payout after {} rounds is {}".format(num_rounds, sum(average_payouts)/(num_samples)))
+
+###VALIDATION###
+
+num_games=10000  #Validation tests
+
+num_blackjack=0
+num_win=0
+num_loss=0
+num_null=0
+payouts = []
+
+observation=env.reset()
+game=1
+total_payout = 0
+
+#Play with the Q agent
+while game<=num_games:
+    action = agent.play(observation)
+    next_observation, payout, is_done, _ = env.step(action)
+    total_payout += payout
+    observation = next_observation
+    if is_done:
+        if payout==-1:
+            num_loss+=1
+        elif payout==1:
+            num_win+=1
+        elif payout==1.5:
+            num_blackjack+=1
+        else:
+            num_null+=1
+        observation = env.reset() # Environment deals new cards to player and dealer
+        payouts.append(payout)
+        game += 1
+
+# Plot payouts per game
+plt.plot(payouts)   
+plt.title('Rewards per game-Agent Q')
+plt.xlabel('Game')
+plt.ylabel('Payout')
+plt.show()      
+    
+print ("Average payout after {} games is {}".format(num_games, total_payout/num_games))
+
+print("Résultats agent Q: ")
+print("Nombre de blackjack: "+str(num_blackjack))
+print("Nombre de parties gagnées: "+str(num_win))
+print("Nombre de parties perdues: "+str(num_loss))
+print("Nombre de parties annulées: "+str(num_null))
+
+#Play randomly
+
+num_blackjack=0
+num_win=0
+num_loss=0
+num_null=0
+
+observation=env.reset()
+game=1
+
+#Play randomly
+while game<=num_games:
+    action = random.choice(agent.valid_actions)
+    next_observation, payout, is_done, _ = env.step(action)
+    observation = next_observation
+    if is_done:
+        if payout==-1:
+            num_loss+=1
+        elif payout==1:
+            num_win+=1
+        elif payout==1.5:
+            num_blackjack+=1
+        else:
+            num_null+=1
+        observation = env.reset() # Environment deals new cards to player and dealer
+        game += 1
+
+
+print("Résultats jeu aléatoire: ")
+print("Nombre de blackjack: "+str(num_blackjack))
+print("Nombre de parties gagnées: "+str(num_win))
+print("Nombre de parties perdues: "+str(num_loss))
+print("Nombre de parties annulées: "+str(num_null))
